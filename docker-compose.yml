@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # PHPサービス
+  app:
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    container_name: laravel_app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+    networks:
+      - laravel_network
+
+  # Nginxサービス
+  web:
+    image: nginx:alpine
+    container_name: laravel_web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./:/var/www
+      - ./docker/web/conf.d:/etc/nginx/conf.d
+    networks:
+      - laravel_network
+    depends_on:
+      - app
+
+  # MySQLサービス
+  db:
+    image: mysql:8.0
+    container_name: laravel_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./docker/db/data:/var/lib/mysql
+    networks:
+      - laravel_network
+
+  # Node.jsサービス（フロントエンド開発用）
+  node:
+    image: node:latest
+    container_name: laravel_node
+    volumes:
+      - ./:/var/www
+    working_dir: /var/www
+    networks:
+      - laravel_network
+    tty: true
+
+networks:
+  laravel_network:
+    driver: bridge
